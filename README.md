@@ -9,6 +9,9 @@ This project is a **Corrective RAG** system that answers questions about *A Song
 
 ## Screenshots
 
+![UI - Home](Screenshots/SS1.png)
+![UI - Answer](Screenshots/SS2.png)
+
 ## Repo Structure
 
 ```
