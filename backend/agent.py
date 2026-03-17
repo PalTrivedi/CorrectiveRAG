@@ -804,27 +804,26 @@ def get_answer(query: str) -> dict[str, Any]:
     if not retrieval.local_sources:
         needs_web = True
     else:
-        if retrieval.relevance_score < 0.6:
-            lowered = answer.lower()
-            explicit_insufficient = any(
-                phrase in lowered
-                for phrase in (
-                    "cannot answer",
-                    "can't answer",
-                    "do not contain",
-                    "don't contain",
-                    "not contain",
-                    "not enough information",
-                    "insufficient",
-                    "no information",
-                )
+        lowered = answer.lower()
+        explicit_insufficient = any(
+            phrase in lowered
+            for phrase in (
+                "cannot answer",
+                "can't answer",
+                "do not contain",
+                "don't contain",
+                "not contain",
+                "not enough information",
+                "insufficient",
+                "no information",
             )
-            if explicit_insufficient:
-                needs_web = True
-            else:
-                needs_web = _answer_needs_web(
-                    query, answer, retrieval.local_sources
-                )
+        )
+        if explicit_insufficient:
+            needs_web = True
+        elif retrieval.relevance_score < 0.6:
+            needs_web = _answer_needs_web(
+                query, answer, retrieval.local_sources
+            )
     if needs_web:
         logger.info("Local sources insufficient. Falling back to web search.")
         web_sources = _search_web(retrieval.rewritten_query)
