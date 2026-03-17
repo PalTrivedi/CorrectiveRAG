@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+requests
+streamlit
+langchain-core
+langchain-text-splitters
+huggingface_hub
+pinecone
+pypdf
