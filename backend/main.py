@@ -65,6 +65,17 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/debug/env")
+def debug_env() -> dict[str, bool | str]:
+    return {
+        "pinecone_api_key_present": bool(os.getenv("PINECONE_API_KEY")),
+        "nvidia_api_key_present": bool(os.getenv("NVIDIA_API_KEY")),
+        "hf_token_present": bool(os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")),
+        "ollama_api_key_present": bool(os.getenv("OLLAMA_API_KEY")),
+        "pinecone_index_name": os.getenv("PINECONE_INDEX_NAME", "crag"),
+    }
+
+
 @app.post("/query", response_model=QueryResponse)
 def query_rag(payload: QueryRequest) -> QueryResponse:
     try:

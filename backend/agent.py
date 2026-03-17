@@ -694,7 +694,8 @@ class CorrectionAgent:
 Your role:
 - Answer questions using ONLY the provided sources.
 - Do NOT include source tags like [SOURCE-1] or [WEB-1] in the answer.
-- If sources don't contain enough information, say so honestly in plain language.
+- If sources are limited, say so briefly and still answer with what's available.
+- Avoid saying you cannot answer unless there is truly no relevant information at all.
 - Be concise but thorough. Use specific details from the sources.
 - Do NOT make up information beyond what the sources contain.
 - Write in clear, direct prose. No roleplay or dramatic narration.
@@ -799,9 +800,31 @@ def get_answer(query: str) -> dict[str, Any]:
     if retrieval.local_sources:
         answer = _get_correction_agent().answer(query, retrieval)
 
-    needs_web = (not retrieval.local_sources) or _answer_needs_web(
-        query, answer, retrieval.local_sources
-    )
+    needs_web = False
+    if not retrieval.local_sources:
+        needs_web = True
+    else:
+        if retrieval.relevance_score < 0.6:
+            lowered = answer.lower()
+            explicit_insufficient = any(
+                phrase in lowered
+                for phrase in (
+                    "cannot answer",
+                    "can't answer",
+                    "do not contain",
+                    "don't contain",
+                    "not contain",
+                    "not enough information",
+                    "insufficient",
+                    "no information",
+                )
+            )
+            if explicit_insufficient:
+                needs_web = True
+            else:
+                needs_web = _answer_needs_web(
+                    query, answer, retrieval.local_sources
+                )
     if needs_web:
         logger.info("Local sources insufficient. Falling back to web search.")
         web_sources = _search_web(retrieval.rewritten_query)
