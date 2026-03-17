@@ -354,21 +354,19 @@ def _build_pinecone_filter(plan: dict[str, Any]) -> dict[str, Any]:
 # WEB SEARCH
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _search_web(query: str, num_results: int = 5) -> list[RetrievedSource]:
-    if os.getenv("WEB_SEARCH_ENABLED", "false").lower() not in {
-        "1",
-        "true",
-        "yes",
-    }:
-        logger.info("Web search disabled (WEB_SEARCH_ENABLED != true).")
-        return []
-
     try:
+        api_key = os.getenv("OLLAMA_API_KEY")
+        if not api_key:
+            logger.warning(
+                "Web search skipped because OLLAMA_API_KEY is missing."
+            )
+            return []
         resp = requests.post(
             os.getenv(
                 "OLLAMA_WEB_SEARCH_URL", "https://ollama.com/api/web_search"
             ),
             headers={
-                "Authorization": f"Bearer {_require_env('OLLAMA_API_KEY')}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json={"query": query, "max_results": min(num_results, 10)},
@@ -797,10 +795,15 @@ def get_answer(query: str) -> dict[str, Any]:
     )
 
     retrieval = _get_retrieval_agent().retrieve(query, allow_web=False)
-    answer = _get_correction_agent().answer(query, retrieval)
+    answer = ""
+    if retrieval.local_sources:
+        answer = _get_correction_agent().answer(query, retrieval)
 
-    if _answer_needs_web(query, answer, retrieval.local_sources):
-        logger.info("Answer insufficient. Falling back to web search.")
+    needs_web = (not retrieval.local_sources) or _answer_needs_web(
+        query, answer, retrieval.local_sources
+    )
+    if needs_web:
+        logger.info("Local sources insufficient. Falling back to web search.")
         web_sources = _search_web(retrieval.rewritten_query)
         if web_sources:
             retrieval = RetrievalResult(
@@ -814,6 +817,8 @@ def get_answer(query: str) -> dict[str, Any]:
             answer = _get_correction_agent().answer(query, retrieval)
         else:
             logger.info("Web search yielded no sources. Returning local answer.")
+            if not answer:
+                answer = "I couldn't find enough information in the available sources to answer that."
 
     total_elapsed = time.perf_counter() - total_start
     logger.info(
