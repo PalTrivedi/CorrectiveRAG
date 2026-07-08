@@ -1,4 +1,5 @@
-# CRAG (Corrective RAG) — Game of Thrones QA
+# Corrective RAG — Game of Thrones QA
+# Try it here :- https://correctiveraggit-jprmgukhebrkb3y6zgnorz.streamlit.app
 
 This project is a **Corrective RAG** system that answers questions about *A Song of Ice and Fire* using:
 - **Pinecone** for vector search over book chunks
