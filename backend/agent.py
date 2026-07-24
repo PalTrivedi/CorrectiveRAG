@@ -28,8 +28,10 @@ DEFAULT_INDEX_NAME = "crag"
 DEFAULT_EMBED_MODEL = "mixedbread-ai/mxbai-embed-large-v1"
 DEFAULT_NVIDIA_MODEL = "openai/gpt-oss-120b"
 DEFAULT_NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
-DEFAULT_NVIDIA_MAX_RETRIES = 3
+DEFAULT_NVIDIA_MAX_RETRIES = 1
 DEFAULT_NVIDIA_RPM_LIMIT = 40
+DEFAULT_NVIDIA_TIMEOUT_SECONDS = 30
+DEFAULT_HF_TIMEOUT_SECONDS = 30
 DEFAULT_TOP_K = 5
 DEFAULT_WEB_SCORE_THRESHOLD = 0.35
 DEFAULT_WEB_MIN_CHUNKS = 1
@@ -213,6 +215,7 @@ def _invoke_nvidia(
     base_url = os.getenv("NVIDIA_API_URL", DEFAULT_NVIDIA_BASE_URL).rstrip("/")
     model = os.getenv("NVIDIA_JSON_MODEL", DEFAULT_NVIDIA_MODEL)
     max_retries = int(os.getenv("NVIDIA_MAX_RETRIES", str(DEFAULT_NVIDIA_MAX_RETRIES)))
+    timeout_seconds = int(os.getenv("NVIDIA_TIMEOUT_SECONDS", str(DEFAULT_NVIDIA_TIMEOUT_SECONDS)))
 
     endpoint = (
         base_url
@@ -256,7 +259,7 @@ def _invoke_nvidia(
                     "Content-Type": "application/json",
                 },
                 json=body,
-                timeout=60,
+                timeout=timeout_seconds,
             )
             resp.raise_for_status()
             content = resp.json()["choices"][0]["message"]["content"]
@@ -315,7 +318,12 @@ def _hf_embed(texts: list[str]) -> list[list[float]]:
     token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY")
     if not token:
         raise ValueError("Missing Hugging Face token: HF_TOKEN or HUGGINGFACE_API_KEY")
-    client = InferenceClient(provider="hf-inference", api_key=token)
+    timeout_seconds = int(os.getenv("HF_TIMEOUT_SECONDS", str(DEFAULT_HF_TIMEOUT_SECONDS)))
+    client = InferenceClient(
+        provider="hf-inference",
+        api_key=token,
+        timeout=timeout_seconds,
+    )
 
     vectors: list[list[float]] = []
     for text in texts:
