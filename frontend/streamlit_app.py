@@ -1,6 +1,7 @@
 ﻿import logging
 import os
 import time
+from urllib.parse import urlparse
 
 import requests
 import streamlit as st
@@ -9,7 +10,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_URL = os.getenv("CRAG_API_URL", "http://127.0.0.1:8000/query")
+def normalize_api_url(url: str) -> str:
+    url = url.strip().rstrip("/")
+    if url.endswith("/query"):
+        return url
+    if url.endswith("/health"):
+        return f"{url[:-7]}/query"
+
+    parsed = urlparse(url)
+    if parsed.scheme and parsed.netloc and not parsed.path:
+        return f"{url}/query"
+
+    return url
+
+
+API_URL = normalize_api_url(os.getenv("CRAG_API_URL", "http://127.0.0.1:8000/query"))
 REQUEST_TIMEOUT = int(os.getenv("CRAG_TIMEOUT_SECONDS", "90"))
 LOG_LEVEL = os.getenv("CRAG_LOG_LEVEL", "INFO").upper()
 
@@ -662,6 +677,17 @@ if st.button(
             except requests.exceptions.ConnectionError:
                 st.error("Cannot reach the Citadel - make sure the FastAPI server is running.")
                 log_event("Connection error.")
+                st.session_state.last_payload = None
+            except requests.exceptions.HTTPError as exc:
+                status = exc.response.status_code if exc.response is not None else "unknown"
+                if status == 404:
+                    st.error(
+                        f"Backend returned 404 for {API_URL}. "
+                        "Set CRAG_API_URL to your backend /query endpoint."
+                    )
+                else:
+                    st.error(f"Backend returned HTTP {status}: {exc}")
+                log_event(f"HTTP error: {status}.")
                 st.session_state.last_payload = None
             except Exception as exc:
                 st.error(f"Something went wrong: {exc}")

@@ -74,7 +74,7 @@ backend/
   agent.py       # retrieval + corrective RAG logic
   embed.py       # document ingestion + Pinecone upsert
 frontend/
-  frontend.py    # Streamlit UI
+  streamlit_app.py  # Streamlit UI
 requirements.txt
 ```
 
@@ -144,9 +144,11 @@ GET http://127.0.0.1:8000/health
 ## Run Frontend (Streamlit)
 
 ```
-streamlit run frontend/frontend.py
+streamlit run frontend/streamlit_app.py
 ```
-Set `CRAG_API_URL` if the backend is not running locally.
+Set `CRAG_API_URL` to your deployed backend. Both the service root and the full
+`/query` endpoint are accepted, for example `https://your-api.onrender.com`
+or `https://your-api.onrender.com/query`.
 
 ## Limitations & Future Work
 

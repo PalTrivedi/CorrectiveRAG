@@ -27,7 +27,7 @@ env/
 Thumbs.db
 .vscode/
 .idea/
-
+.tokensave/
 # Project artifacts
 .embed_checkpoint.json
 
