@@ -24,7 +24,14 @@ def normalize_api_url(url: str) -> str:
     return url
 
 
+def health_url_for(api_url: str) -> str:
+    if api_url.endswith("/query"):
+        return f"{api_url[:-6]}/health"
+    return ""
+
+
 API_URL = normalize_api_url(os.getenv("CRAG_API_URL", "http://127.0.0.1:8000/query"))
+HEALTH_URL = health_url_for(API_URL)
 REQUEST_TIMEOUT = int(os.getenv("CRAG_TIMEOUT_SECONDS", "90"))
 LOG_LEVEL = os.getenv("CRAG_LOG_LEVEL", "INFO").upper()
 
@@ -655,6 +662,11 @@ if st.button(
     else:
         with st.spinner("The Maester consults the ancient scrolls..."):
             try:
+                if HEALTH_URL:
+                    log_event(f"GET {HEALTH_URL}")
+                    health_resp = requests.get(HEALTH_URL, timeout=10)
+                    health_resp.raise_for_status()
+
                 log_event(f"POST {API_URL} (timeout {REQUEST_TIMEOUT}s)")
                 resp = requests.post(
                     API_URL,
@@ -670,12 +682,16 @@ if st.button(
                 log_event("Response received.")
             except requests.exceptions.Timeout:
                 st.error(
-                    f"The ravens did not return in time ({REQUEST_TIMEOUT}s). Is the API server running?"
+                    f"The ravens did not return in time. Checked {HEALTH_URL or API_URL}; "
+                    f"query timeout is {REQUEST_TIMEOUT}s."
                 )
                 log_event("Timeout error.")
                 st.session_state.last_payload = None
             except requests.exceptions.ConnectionError:
-                st.error("Cannot reach the Citadel - make sure the FastAPI server is running.")
+                st.error(
+                    f"Cannot reach the backend at {HEALTH_URL or API_URL}. "
+                    "Check CRAG_API_URL in Streamlit secrets."
+                )
                 log_event("Connection error.")
                 st.session_state.last_payload = None
             except requests.exceptions.HTTPError as exc:
